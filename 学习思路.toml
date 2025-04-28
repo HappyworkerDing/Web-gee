@@ -1,0 +1,39 @@
+1.要想处理http请求，首先要实现一个类似于handler的接口实例
+type handler interface{} {
+     ServeHTTP(w ResponseWriter , r *Request)
+}
+handler实例包含了一个ServeHTTP的函数 也就是说要想处理HTTP请求，可以创建一个空的实例去实现ServeHTTP即可，
+eg. type Engine struct{}
+func (engine *Engine) ServeHTTP(w ResponseWriter , r *Request){
+      ...
+      ...
+ }
+ 利用http.ListenAndServe函数启动端口和创建的实例就可以处理http请求
+
+ 2.gee框架的设计是参考了开源框架gin
+ r := gin.New() //使用New()创建gin实例子
+ r.GET("/" , func(w http.ResponseWrite , req *http.Request) //使用GET方法添加路由
+ r.Run("端口号“) //s使用Run()启动web服务
+
+3.handler的两个参数*http.Request和hettp.ResponseWriter提供的接口太多太复杂，所以要对这两个参数进行封装，封装成一个context，handler的参数就变成了
+gee *context 因为gee已经实现了http服务
+
+4.//动态参数和通配符参数都是路由中用来匹配路径的机制，通常用于解析URL中的动态部分。
+  //动态参数：指的是路由中的某些部分可以是变量，其值会从 URL 中提取出来。  /user/：id 其中：id是动态参数 匹配成功提取出id=123.
+  //通配符参数：路由中可以匹配路径的剩余部分，用于匹配不确定长度的路径。   /assets/*filepath 其中 *filepath是通配符参数
+  //若请求路径为：/assets/css/style.css 匹配成功。提取出filepath=css/style.css  通配符匹配的值通常是通过连接多个片段得到的字符串。
+
+5.分组控制 :
+以/post开头的路由匿名可访问。
+以/admin开头的路由需要鉴权。
+以/api开头的路由是 RESTful 接口，可以对接第三方平台，需要三方平台鉴权。
+可以通过中间件来实现，/admin的分组可以应用鉴权中间件，这样所有以/admin开头的路由就都具有鉴权的功能了；
+/分组应用日志中间件，/是默认的最顶层的分组，也就意味着给所有的路由，即整个框架增加了记录日志的能力。
+
+6.//请求处理的过程：
+  //1.客户端向服务器发送http请求
+  //2.服务器端接收请求，http.Server调用engine的ServerHTTP函数
+  //3.ServeHTTP调用newContext封装请求和响应
+  //4.ServeHTTPP将Context传给router的handle方法
+  //5.router的handle方法根据请求的路径和方法，在路由树中查找匹配的节点，并调用相应的处理函数
+  //6.处理函数通过Context生成响应返回给客户端
